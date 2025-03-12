@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
+<!-- v5.5 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>行政楼AR预览</title>
     
-    <!-- 核心样式 -->
+    <!-- 优化后的样式 -->
     <style>
         :root {
             --primary-blue: #007AFF;
@@ -23,27 +25,33 @@
             font-family: -apple-system, sans-serif;
         }
 
-        /* 主容器 */
-        .main-container {
-            text-align: center;
-            max-width: 400px;
-            padding: 30px;
+        .main-card {
             background: white;
             border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
             box-shadow: 0 8px 24px rgba(0,122,255,0.1);
         }
 
-        /* 进度条容器 */
-        .loading-wrapper {
-            margin: 25px 0;
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            stroke: var(--primary-blue);
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
         }
 
         .progress-bar {
-            width: 200px;
+            width: 100%;
             height: 6px;
             background: #e0e0e0;
             border-radius: 3px;
-            margin: 15px auto;
+            margin: 20px 0;
             overflow: hidden;
         }
 
@@ -54,60 +62,42 @@
             transition: width 0.3s ease;
         }
 
-        /* 状态文本 */
         .status-text {
             color: var(--primary-blue);
+            text-align: center;
             font-size: 14px;
-            margin: 10px 0;
+            line-height: 1.5;
         }
 
-        /* 加载动画 */
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
-
-        /* 最终按钮 */
         .ar-button {
-            display: none; /* 默认隐藏 */
-            padding: 12px 24px;
+            display: none;
+            width: 100%;
+            padding: 15px;
             background: var(--primary-blue);
             color: white;
-            border-radius: 25px;
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 500;
             transition: transform 0.2s;
         }
-
-        .ar-button:hover {
-            transform: translateY(-2px);
-        }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <h1 style="color: var(--primary-blue); margin-bottom: 20px;">行政楼3D模型</h1>
+    <div class="main-card">
+        <h1 style="color: var(--primary-blue); text-align: center; margin: 0 0 25px 0;">行政楼AR预览</h1>
         
-        <!-- 加载状态 -->
-        <div class="loading-wrapper">
-            <svg class="loading-spinner" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="18" fill="none" 
-                        stroke="var(--primary-blue)" stroke-width="4" 
-                        stroke-dasharray="113" stroke-dashoffset="56"/>
-            </svg>
-            
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            
-            <p class="status-text" id="status">正在初始化...</p>
+        <!-- 加载指示器 -->
+        <svg class="loading-spinner" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="none" 
+                    stroke-width="4" stroke-linecap="round"
+                    stroke-dasharray="31.415, 31.415"/>
+        </svg>
+
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
         </div>
+
+        <p class="status-text" id="status">正在连接服务器...</p>
 
         <!-- AR触发按钮 -->
         <a href="xingzhenglou.usdz" rel="ar" 
@@ -118,63 +108,76 @@
     </div>
 
     <script>
-        // 设备检测
-        const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const $ = selector => document.querySelector(selector);
-        let loadedBytes = 0;
-        let totalBytes = 0;
+        // 增强版加载控制器
+        const initARLoader = () => {
+            const $ = selector => document.querySelector(selector);
+            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            
+            // 设备检测
+            if (!isiOS) {
+                $('#status').innerHTML = '请使用iPhone/iPad的Safari浏览器<br>访问此页面';
+                return;
+            }
 
-        if (!isiOS) {
-            $('#status').innerHTML = '请使用iPhone/iPad的Safari浏览器<br>访问此页面';
-            return;
+            // 网络状态监测
+            let retryCount = 0;
+            const MAX_RETRY = 2;
+            
+            const loadModel = () => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', 'xingzhenglou.usdz', true);
+                xhr.responseType = 'blob';
+
+                // 进度更新
+                xhr.onprogress = e => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        $('.progress-fill').style.width = `${percent}%`;
+                        $('#status').innerHTML = `加载进度: ${percent}%<br>
+                            ${(e.loaded/1024/1024).toFixed(1)}MB / ${(e.total/1024/1024).toFixed(1)}MB`;
+                    }
+                };
+
+                // 加载成功
+                xhr.onload = () => {
+                    $('.progress-fill').style.width = '100%';
+                    $('#status').textContent = '准备就绪！';
+                    $('#arBtn').style.display = 'block';
+                };
+
+                // 错误处理
+                xhr.onerror = () => {
+                    if (retryCount < MAX_RETRY) {
+                        retryCount++;
+                        $('#status').innerHTML = `连接中断，正在重试 (${retryCount}/${MAX_RETRY})...`;
+                        setTimeout(loadModel, 2000);
+                    } else {
+                        $('#status').innerHTML = '网络异常，请检查连接后刷新页面';
+                        $('.progress-bar').style.backgroundColor = '#ff3b30';
+                    }
+                };
+
+                xhr.send();
+            };
+
+            // 启动加载
+            loadModel();
+
+            // 超时监控
+            setTimeout(() => {
+                if ($('#arBtn').style.display === 'none') {
+                    $('#status').innerHTML = '正在排队加载，请稍候...<br>（大型模型需要更多时间）';
+                }
+            }, 10000);
+        };
+
+        // 安全初始化
+        try {
+            initARLoader();
+        } catch (e) {
+            document.getElementById('status').innerHTML = '初始化失败，请刷新页面';
+            console.error('Loader Error:', e);
         }
-
-        // 模型预加载
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'xingzhenglou.usdz', true);
-        xhr.responseType = 'blob';
-
-        xhr.onprogress = e => {
-            if (e.lengthComputable) {
-                loadedBytes = e.loaded;
-                totalBytes = e.total;
-                
-                // 更新进度
-                const percent = Math.round((loadedBytes / totalBytes) * 100);
-                $('.progress-fill').style.width = `${percent}%`;
-                
-                // 格式化显示
-                const formatMB = bytes => (bytes / 1024 / 1024).toFixed(1);
-                $('#status').innerHTML = `
-                    加载进度: ${percent}%<br>
-                    ${formatMB(loadedBytes)}MB / ${formatMB(totalBytes)}MB
-                `;
-            }
-        };
-
-        xhr.onload = () => {
-            // 隐藏加载状态
-            $('.loading-wrapper').style.display = 'none';
-            
-            // 显示AR按钮
-            $('#arBtn').style.display = 'inline-block';
-            
-            // 添加微交互
-            $('#arBtn').addEventListener('click', function() {
-                this.style.transform = 'scale(0.95)';
-                setTimeout(() => this.style.transform = '', 200);
-            });
-        };
-
-        xhr.send();
-
-        // 超时处理
-        setTimeout(() => {
-            if (totalBytes === 0) {
-                $('#status').innerHTML = '网络连接较慢，请检查：<br>1. WiFi/蜂窝数据是否启用<br>2. 尝试刷新页面';
-                $('.progress-bar').style.backgroundColor = '#ff3b30';
-            }
-        }, 15000);
     </script>
 </body>
 </html>
