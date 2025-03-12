@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR行政楼预览</title>
+    
+    <!-- 预加载USDZ文件加速 -->
+    <link rel="preload" href="xingzhenglou.usdz" as="fetch">
+    
+    <!-- 自动触发逻辑 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 尝试自动触发AR（iOS可能要求用户先点击页面）
+            try {
+                const arLink = document.createElement('a');
+                arLink.href = 'xingzhenglou.usdz';
+                arLink.rel = 'ar';
+                document.body.appendChild(arLink);
+                arLink.click();
+            } catch (e) {
+                console.log('自动触发失败:', e);
+            }
+        });
+    </script>
+    
+    <!-- 简单样式 -->
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .ar-button {
+            display: inline-block;
+            margin: 20px;
+            padding: 15px 30px;
+            background: #007AFF;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .ar-button img {
+            width: 200px;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>行政楼AR预览</h1>
+    
+    <!-- 手动触发按钮 -->
+    <a href="xingzhenglou.usdz" rel="ar" class="ar-button">
+        <img src="placeholder.jpg" alt="点击启动AR">
+        <p>点击这里手动开启AR</p>
+    </a>
+
+    <!-- 兼容性提示 -->
+    <div id="warning" style="color: #666; display: none;">
+        <p>⚠️ 请使用iOS设备上的Safari浏览器访问此页面以体验AR功能</p>
+    </div>
+
+    <!-- 检测非iOS设备 -->
+    <script>
+        const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (!isiOS) {
+            document.getElementById('warning').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
