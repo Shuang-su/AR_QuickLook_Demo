@@ -3,128 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR行政楼预览</title>
+    <title>AR 模型预览</title>
     
-    <!-- 内置加载动画 -->
+    <!-- 关键样式 -->
     <style>
-        /* 旋转动画 */
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
+        .ar-container {
+            position: relative;
+            max-width: 600px;
             margin: 20px auto;
         }
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
+        
+        .ar-preview-image {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s;
         }
-
-        /* 蒙版层样式 */
-        .overlay {
-            position: fixed;
+        
+        .ar-preview-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .loading-overlay {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
+            background: rgba(0,0,0,0.7);
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
-        }
-        
-        .overlay-content {
-            text-align: center;
             color: white;
-            padding: 20px;
+            border-radius: 12px;
         }
     </style>
 </head>
 <body>
-    <!-- 加载界面 -->
-    <div class="loading-container">
-        <svg class="loading-spinner" viewBox="0 0 50 50">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#007AFF" stroke-width="4" stroke-linecap="round" 
-                    stroke-dasharray="31.415, 31.415" />
-        </svg>
-        <p class="status-text" id="loading-text">模型加载中...</p>
-    </div>
-
-    <!-- 蒙版引导层 -->
-    <div class="overlay" id="overlay">
-        <div class="overlay-content">
-            <h2>AR体验准备就绪！</h2>
-            <p>轻触屏幕任意位置启动增强现实</p>
-            <button id="start-ar" style="margin-top:20px; padding:12px 24px; background:#007AFF; color:white; border:none; border-radius:8px;">
-                🚀 立即体验
-            </button>
+    <div id="__next">
+        <div class="page-wrapper">
+            <div class="sections-wrapper">
+                <!-- AR模块容器 -->
+                <div class="ar-section" data-ga-category="3d_model">
+                    <!-- 加载状态 -->
+                    <div class="loading-overlay" id="loading">
+                        <h4>正在准备3D模型...</h4>
+                    </div>
+                    
+                    <!-- AR触发核心 -->
+                    <section class="ar-container">
+                        <a id="ar-link" 
+                           rel="ar" 
+                           href="https://your-domain.com/xingzhenglou.usdz"
+                           aria-label="在AR中查看行政楼模型">
+                            <img class="ar-preview-image" 
+                                 src="preview-image.jpg" 
+                                 alt="行政楼3D预览图"
+                                 loading="lazy">
+                        </a>
+                    </section>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // 设备检测
+        // 设备检测与加载状态管理
         const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        let modelLoaded = false;
+        const arLink = document.getElementById('ar-link');
+        const loadingOverlay = document.getElementById('loading');
 
-        // 预加载USDZ文件
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'xingzhenglou.usdz', true);
-        xhr.responseType = 'blob';
-
-        xhr.onprogress = (e) => {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                document.getElementById('loading-text').textContent = 
-                    `模型加载中... ${percent}% (${(e.loaded/1024/1024).toFixed(1)}MB/${(e.total/1024/1024).toFixed(1)}MB)`;
-            }
-        };
-
-        xhr.onload = () => {
-            modelLoaded = true;
-            document.querySelector('.loading-container').style.display = 'none';
-            showAROverlay();
-        };
-
-        xhr.send();
-
-        // 显示AR引导层
-        function showAROverlay() {
-            const overlay = document.getElementById('overlay');
-            overlay.style.display = 'flex';
-            
-            // 点击蒙版触发AR
-            overlay.addEventListener('click', function handler(e) {
-                if (!modelLoaded) return;
-                
-                // 移除事件监听避免重复触发
-                overlay.removeEventListener('click', handler);
-                
-                // 正式触发AR
-                triggerAR();
-            });
+        // 非iOS设备处理
+        if (!isiOS) {
+            loadingOverlay.innerHTML = '<h4>请使用iPhone/iPad的Safari浏览器体验AR功能</h4>';
+            arLink.style.pointerEvents = 'none';
         }
 
-        // 实际触发AR的方法
-        function triggerAR() {
-            const arLink = document.createElement('a');
-            arLink.href = 'xingzhenglou.usdz';
-            arLink.rel = 'ar';
-            document.body.appendChild(arLink);
+        // 预加载模型（可选）
+        if (isiOS) {
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.href = arLink.href;
+            preloadLink.as = 'fetch';
+            document.head.appendChild(preloadLink);
             
-            try {
-                arLink.click();
-                document.getElementById('overlay').style.display = 'none';
-            } catch (e) {
-                alert('AR启动失败，请确保使用Safari浏览器');
-            }
+            // 隐藏加载状态
+            preloadLink.onload = () => {
+                loadingOverlay.style.display = 'none';
+            };
         }
-
-        // 超时处理（15秒）
-        setTimeout(() => {
-            if (!modelLoaded) {
-                document.getElementById('loading-text').innerHTML = 
-                    '加载时间较长，建议：<br>1. 检查网络连接<br>2. 刷新页面';
-            }
-        }, 15000);
     </script>
 </body>
 </html>
