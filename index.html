@@ -5,157 +5,126 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR行政楼预览</title>
     
-    <!-- 预加载关键资源 -->
-    <link rel="preload" href="xingzhenglou.usdz" as="fetch">
-    <link rel="preload" href="loading.gif" as="image">
-
-    <!-- 样式 -->
+    <!-- 内置加载动画 -->
     <style>
-        :root {
-            --primary-color: #007AFF;
-            --text-color: #333;
-        }
-
-        body {
-            font-family: -apple-system, sans-serif;
-            text-align: center;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-
-        /* 加载动画容器 */
-        .loading-container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 100;
-        }
-
-        /* AR按钮交互效果 */
-        .ar-button {
-            display: none; /* 默认隐藏 */
-            margin: 30px auto;
-            padding: 20px 40px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 15px;
-            text-decoration: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-
-        .ar-button:hover {
-            transform: translateY(-2px);
-        }
-
-        /* 进度条样式 */
-        .progress-bar {
-            width: 200px;
-            height: 4px;
-            background: #ddd;
+        /* 旋转动画 */
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
             margin: 20px auto;
-            border-radius: 2px;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
         }
 
-        .progress-fill {
-            width: 0%;
+        /* 蒙版层样式 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            background: var(--primary-color);
-            transition: width 0.3s ease;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-
-        /* 状态提示 */
-        .status-text {
-            color: var(--text-color);
-            margin: 15px 0;
-            font-size: 0.9em;
+        
+        .overlay-content {
+            text-align: center;
+            color: white;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
-    <!-- 加载动画 -->
+    <!-- 加载界面 -->
     <div class="loading-container">
-        <img src="loading.gif" alt="加载中" width="60">
-        <div class="progress-bar">
-            <div class="progress-fill"></div>
+        <svg class="loading-spinner" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#007AFF" stroke-width="4" stroke-linecap="round" 
+                    stroke-dasharray="31.415, 31.415" />
+        </svg>
+        <p class="status-text" id="loading-text">模型加载中...</p>
+    </div>
+
+    <!-- 蒙版引导层 -->
+    <div class="overlay" id="overlay">
+        <div class="overlay-content">
+            <h2>AR体验准备就绪！</h2>
+            <p>轻触屏幕任意位置启动增强现实</p>
+            <button id="start-ar" style="margin-top:20px; padding:12px 24px; background:#007AFF; color:white; border:none; border-radius:8px;">
+                🚀 立即体验
+            </button>
         </div>
-        <p class="status-text" id="loading-text">模型加载中... (0%)</p>
-    </div>
-
-    <!-- 主内容（初始隐藏） -->
-    <div id="main-content" style="display: none;">
-        <h1>行政楼AR预览</h1>
-        <p class="status-text">✅ 模型已准备就绪</p>
-        
-        <a href="xingzhenglou.usdz" rel="ar" class="ar-button" id="ar-button">
-            <img src="placeholder.jpg" alt="AR预览" style="width: 280px; border-radius: 8px;">
-            <p style="margin-top: 10px;">点击启动AR体验</p>
-        </a>
-
-        <div class="status-text" id="tap-hint">👆 轻触按钮开始探索</div>
-    </div>
-
-    <!-- 非iOS提示 -->
-    <div id="ios-warning" style="display: none; color: #e74c3c;">
-        <p>⚠️ 请使用iPhone/iPad上的Safari浏览器访问本页面</p>
     </div>
 
     <script>
         // 设备检测
         const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const $ = selector => document.querySelector(selector);
+        let modelLoaded = false;
 
-        if (!isiOS) {
-            document.getElementById('ios-warning').style.display = 'block';
-        } else {
-            // 静默预加载USDZ文件
-            let loadProgress = 0;
-            const xhr = new XMLHttpRequest();
+        // 预加载USDZ文件
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'xingzhenglou.usdz', true);
+        xhr.responseType = 'blob';
+
+        xhr.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                document.getElementById('loading-text').textContent = 
+                    `模型加载中... ${percent}% (${(e.loaded/1024/1024).toFixed(1)}MB/${(e.total/1024/1024).toFixed(1)}MB)`;
+            }
+        };
+
+        xhr.onload = () => {
+            modelLoaded = true;
+            document.querySelector('.loading-container').style.display = 'none';
+            showAROverlay();
+        };
+
+        xhr.send();
+
+        // 显示AR引导层
+        function showAROverlay() {
+            const overlay = document.getElementById('overlay');
+            overlay.style.display = 'flex';
             
-            xhr.open('GET', 'xingzhenglou.usdz', true);
-            xhr.responseType = 'blob';
-
-            // 进度更新
-            xhr.addEventListener('progress', e => {
-                if (e.lengthComputable) {
-                    loadProgress = Math.round((e.loaded / e.total) * 100);
-                    $('#loading-text').textContent = `模型加载中... (${loadProgress}%)`;
-                    $('.progress-fill').style.width = `${loadProgress}%`;
-                }
+            // 点击蒙版触发AR
+            overlay.addEventListener('click', function handler(e) {
+                if (!modelLoaded) return;
+                
+                // 移除事件监听避免重复触发
+                overlay.removeEventListener('click', handler);
+                
+                // 正式触发AR
+                triggerAR();
             });
-
-            // 加载完成
-            xhr.addEventListener('load', () => {
-                // 隐藏加载界面
-                $('.loading-container').style.display = 'none';
-                
-                // 显示主内容
-                $('#main-content').style.display = 'block';
-                
-                // 添加呼吸动画提示
-                $('#tap-hint').style.animation = 'breath 1.5s ease infinite';
-                
-                // 自动滚动到按钮位置
-                setTimeout(() => {
-                    $('#ar-button').scrollIntoView({ behavior: 'smooth' });
-                }, 500);
-            });
-
-            // 开始加载
-            xhr.send();
         }
 
-        // 呼吸动画关键帧
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes breath {
-                0% { opacity: 0.6; transform: scale(0.98); }
-                50% { opacity: 1; transform: scale(1.02); }
-                100% { opacity: 0.6; transform: scale(0.98); }
+        // 实际触发AR的方法
+        function triggerAR() {
+            const arLink = document.createElement('a');
+            arLink.href = 'xingzhenglou.usdz';
+            arLink.rel = 'ar';
+            document.body.appendChild(arLink);
+            
+            try {
+                arLink.click();
+                document.getElementById('overlay').style.display = 'none';
+            } catch (e) {
+                alert('AR启动失败，请确保使用Safari浏览器');
             }
-        `;
-        document.head.appendChild(style);
+        }
+
+        // 超时处理（15秒）
+        setTimeout(() => {
+            if (!modelLoaded) {
+                document.getElementById('loading-text').innerHTML = 
+                    '加载时间较长，建议：<br>1. 检查网络连接<br>2. 刷新页面';
+            }
+        }, 15000);
     </script>
 </body>
 </html>
