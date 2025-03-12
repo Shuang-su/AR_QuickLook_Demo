@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 
-<!-- v5.6 -->
+<!-- v5.65 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,14 +76,17 @@
 
         .ar-button {
             display: none; /* 默认隐藏 */
-            width: 100%;
-            padding: 15px;
+            padding: 12px 24px;
             background: var(--primary-blue);
             color: white;
             border-radius: 12px;
             text-decoration: none;
             font-weight: 500;
             transition: transform 0.2s;
+        }
+
+        .ar-button:hover {
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -103,7 +106,7 @@
             <div class="progress-fill"></div>
         </div>
 
-        <p class="status-text" id="status">正在连接服务器...</p>
+        <p class="status-text" id="status">正在初始化...</p>
 
         <!-- AR触发按钮 -->
         <a href="xingzhenglou.usdz" rel="ar" 
