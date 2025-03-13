@@ -1,17 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 
-<!-- v5.66 -->
+<!-- 
+    行政楼AR预览页面 - 版本v5.7
+    最后更新：2025-3-13
+    更新内容：
+    - 完善功能概述和版本信息
+    - 优化用户体验
+-->
 <head>
+    <!-- 基础元信息 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- iOS设备特定设置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>行政楼AR预览</title>
     
     <!-- 核心样式 -->
     <style>
         :root {
-            --primary-blue: #007AFF;
-            --background: #f0f5ff;
+            --primary-blue: #007AFF;  /* 主品牌蓝色 */
+            --background: #f0f5ff;   /* 页面背景色 */
         }
 
         body {
@@ -22,58 +32,59 @@
             align-items: center;
             justify-content: center;
             margin: 0;
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, sans-serif;  /* 使用系统字体 */
         }
 
-        /* 主容器 */
+        /* 主卡片容器样式 */
         .main-card {
             text-align: center;
             max-width: 400px;
             padding: 30px;
             background: white;
             border-radius: 20px;
-            /*width: 90%;*/
-            
-            box-shadow: 0 8px 24px rgba(0,122,255,0.1);
+            box-shadow: 0 8px 24px rgba(0,122,255,0.1);  /* 蓝色系阴影 */
         }
 
-        /* 加载动画 */
+        /* 加载旋转指示器 */
         .loading-spinner {
             width: 50px;
             height: 50px;
             animation: spin 1s linear infinite;
             margin: 20px auto;
-            stroke: var(--primary-blue);
+            stroke: var(--primary-blue);  /* 使用主题色 */
         }
 
         @keyframes spin {
-            100% { transform: rotate(360deg); }
+            100% { transform: rotate(360deg); }  /* 旋转动画定义 */
         }
 
+        /* 进度条容器 */
         .progress-bar {
             width: 100%;
             height: 6px;
             background: #e0e0e0;
             border-radius: 3px;
             margin: 20px 0;
-            overflow: hidden;
+            overflow: hidden;  /* 隐藏溢出部分 */
         }
 
+        /* 动态进度条填充 */
         .progress-fill {
             width: 0%;
             height: 100%;
             background: var(--primary-blue);
-            transition: width 0.3s ease;
+            transition: width 0.3s ease;  /* 平滑过渡效果 */
         }
 
-        /* 状态文本 */       
+        /* 状态提示文本样式 */
         .status-text {
             color: var(--primary-blue);
             text-align: center;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.5;  /* 增加行间距 */
         }
 
+        /* AR按钮样式 */
         .ar-button {
             display: none; /* 默认隐藏 */
             padding: 12px 24px;
@@ -82,30 +93,33 @@
             border-radius: 12px;
             text-decoration: none;
             font-weight: 500;
-            transition: transform 0.2s;
+            transition: transform 0.2s;  /* 悬停动画 */
         }
 
         .ar-button:hover {
-            transform: translateY(-2px);
+            transform: translateY(-2px);  /* 悬停微移效果 */
         }
     </style>
 </head>
 
 <body>
+    <!-- 主内容卡片 -->
     <div class="main-card">
-        <h1 style="color: var(--primary-blue); text-align: center; margin: 0 0 25px 0;">行政楼AR预览</h1>
+        <h1 style="color: var(--primary-blue); margin: 0 0 25px 0;">行政楼AR预览</h1>
         
-        <!-- 加载指示器 -->
+        <!-- SVG加载指示器 -->
         <svg class="loading-spinner" viewBox="0 0 50 50">
             <circle cx="25" cy="25" r="20" fill="none" 
                     stroke-width="4" stroke-linecap="round"
-                    stroke-dasharray="31.415, 31.415"/>
+                    stroke-dasharray="31.415, 31.415"/>  <!-- 虚线效果 -->
         </svg>
 
+        <!-- 进度条容器 -->
         <div class="progress-bar">
             <div class="progress-fill"></div>
         </div>
 
+        <!-- 状态提示区域 -->
         <p class="status-text" id="status">正在初始化...</p>
 
         <!-- AR触发按钮 -->
@@ -118,62 +132,79 @@
     </div>
 
     <script>
-        // 增强版加载控制器
+        /**
+         * AR加载控制器
+         * 功能包括：
+         * - 设备兼容性检测
+         * - 模型加载进度监控
+         * - 异常处理机制
+         */
         const initARLoader = () => {
+            // DOM元素快捷选择器
             const $ = selector => document.querySelector(selector);
+            
+            // 设备平台检测
             const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             
-            // 设备检测
+            // 非iOS设备处理
             if (!isiOS) {
                 $('#status').innerHTML = '请使用iPhone/iPad的Safari浏览器<br>访问此页面';
+                // 隐藏加载相关元素
+                $('.loading-spinner').style.display = 'none';
+                $('.progress-bar').style.display = 'none';
                 return;
             }
 
-            // 网络状态监测
+            // 网络请求重试配置
             let retryCount = 0;
             const MAX_RETRY = 2;
             
+            /**
+             * 模型加载方法
+             * 使用XMLHttpRequest实现进度监控
+             */
             const loadModel = () => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('GET', 'xingzhenglou.usdz', true);
                 xhr.responseType = 'blob';
 
-                // 进度更新
+                // 进度更新处理
                 xhr.onprogress = e => {
                     if (e.lengthComputable) {
                         const percent = Math.round((e.loaded / e.total) * 100);
                         $('.progress-fill').style.width = `${percent}%`;
+                        // 显示加载详细信息
                         $('#status').innerHTML = `加载进度: ${percent}%<br>
                             ${(e.loaded/1024/1024).toFixed(1)}MB / ${(e.total/1024/1024).toFixed(1)}MB`;
                     }
                 };
 
-                // 加载成功
+                // 加载成功处理
                 xhr.onload = () => {
                     $('.progress-fill').style.width = '100%';
                     $('#status').textContent = '准备就绪！';
-                    $('#arBtn').style.display = 'block';
+                    $('#arBtn').style.display = 'block';  // 显示AR按钮
                 };
 
-                // 错误处理
+                // 错误处理逻辑
                 xhr.onerror = () => {
                     if (retryCount < MAX_RETRY) {
                         retryCount++;
                         $('#status').innerHTML = `连接中断，正在重试 (${retryCount}/${MAX_RETRY})...`;
-                        setTimeout(loadModel, 2000);
+                        setTimeout(loadModel, 2000);  // 2秒后重试
                     } else {
                         $('#status').innerHTML = '网络异常，请检查连接后刷新页面';
-                        $('.progress-bar').style.backgroundColor = '#ff3b30';
+                        $('.progress-bar').style.backgroundColor = '#ff3b30';  // 红色错误提示
                     }
                 };
 
                 xhr.send();
             };
 
-            // 启动加载
+            // 启动模型加载
             loadModel();
 
-            // 超时监控
+            // 加载超时监控（10秒）
             setTimeout(() => {
                 if ($('#arBtn').style.display === 'none') {
                     $('#status').innerHTML = '正在排队加载，请稍候...<br>（大型模型需要更多时间）';
